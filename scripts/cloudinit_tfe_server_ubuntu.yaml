@@ -28,10 +28,23 @@ write_files:
             TFE_OBJECT_STORAGE_AZURE_ACCOUNT_NAME: "${storage_account}"
             TFE_OBJECT_STORAGE_AZURE_CONTAINER: "${container_name}"
             TFE_OBJECT_STORAGE_AZURE_ACCOUNT_KEY: "${storage_account_key}"
+
+
+
+
+
+
             # Redis settings
             TFE_REDIS_HOST: "${redis_host}:${redis_port}"
             TFE_REDIS_PASSWORD: "${redis_primary_access_key}"
             TFE_REDIS_USE_AUTH: true
+            
+            # Redis settings sidekiq
+            TFE_REDIS_SIDEKIQ_HOST: ${redis_sidekiq_host}:${redis_sidekiq_port}
+            TFE_REDIS_SIDEKIQ_USE_AUTH: true
+            TFE_REDIS_SIDEKIQ_PASSWORD: ${redis_sidekiq_primary_access_key}
+
+
             # Vault
             TFE_VAULT_CLUSTER_ADDRESS: "https://PRIVATE_IP_ADDRESS_WILL_BE_PLACED_HERE:8201"
           cap_add:

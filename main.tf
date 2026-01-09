@@ -1,8 +1,8 @@
 terraform {
   required_providers {
     azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "4.23.0"
+      source = "hashicorp/azurerm"
+      # version = "4.23.0"
     }
     aws = {
       source  = "hashicorp/aws"
@@ -28,6 +28,31 @@ provider "acme" {
   # server_url = "https://acme-staging-v02.api.letsencrypt.org/directory"
   server_url = "https://acme-v02.api.letsencrypt.org/directory"
 }
+
+locals {
+  tfe_os_normalized = lower(var.tfe_os)
+
+  # Azure Marketplace image references
+  # Ubuntu: pinned version as before
+  # RedHat: use 'latest' so it stays current
+  image_references = {
+    ubuntu = {
+      publisher = "Canonical"
+      offer     = "0001-com-ubuntu-server-jammy"
+      sku       = "22_04-lts-gen2"
+      version   = "22.04.202312060"
+    }
+    redhat = {
+      publisher = "RedHat"
+      offer     = "RHEL"
+      sku       = "9-lvm-gen2"
+      version   = "latest"
+    }
+  }
+
+  selected_image = local.image_references[local.tfe_os_normalized]
+}
+
 
 resource "azurerm_resource_group" "tfe" {
   name     = var.tag_prefix
@@ -261,6 +286,13 @@ resource "azurerm_postgresql_flexible_server_database" "example" {
   charset   = "utf8"
 }
 
+# resource "azurerm_postgresql_flexible_server_database" "example2" {
+#   name      = "tfe2"
+#   server_id = azurerm_postgresql_flexible_server.example.id
+#   collation = "en_US.utf8"
+#   charset   = "utf8"
+# }
+
 resource "azurerm_postgresql_flexible_server_configuration" "example" {
   name      = "azure.extensions"
   server_id = azurerm_postgresql_flexible_server.example.id
@@ -283,7 +315,7 @@ resource "azurerm_storage_account" "example" {
 
 resource "azurerm_storage_container" "example" {
   name                  = "${var.tag_prefix}-container"
-  storage_account_name  = azurerm_storage_account.example.name
+  storage_account_id  = azurerm_storage_account.example.id
   container_access_type = "private"
 }
 
@@ -398,23 +430,6 @@ resource "azurerm_lb_backend_address_pool" "tfe_lb_backend_pool" {
   name            = "${var.tag_prefix}-backendpool"
 }
 
-resource "azurerm_redis_cache" "tfe" {
-  name                      = "${var.tag_prefix}-redis"
-  location                  = azurerm_resource_group.tfe.location
-  resource_group_name       = azurerm_resource_group.tfe.name
-  capacity                  = 1
-  family                    = "P"
-  sku_name                  = "Premium"
-  non_ssl_port_enabled      = true
-  minimum_tls_version       = "1.2"
-  private_static_ip_address = cidrhost(cidrsubnet(var.vnet_cidr, 8, 3), 22)
-  subnet_id                 = azurerm_subnet.private3.id
-  redis_version             = 6
-
-  redis_configuration {
-  }
-}
-
 resource "azurerm_linux_virtual_machine_scale_set" "tfe" {
   name                = "${var.tag_prefix}-tfe-vmss"
   resource_group_name = azurerm_resource_group.tfe.name
@@ -429,10 +444,10 @@ resource "azurerm_linux_virtual_machine_scale_set" "tfe" {
   }
 
   source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts-gen2"
-    version   = "22.04.202312060"
+    publisher = local.selected_image.publisher
+    offer     = local.selected_image.offer
+    sku       = local.selected_image.sku
+    version   = local.selected_image.version
   }
 
   os_disk {
@@ -452,26 +467,36 @@ resource "azurerm_linux_virtual_machine_scale_set" "tfe" {
     }
   }
 
-  custom_data = base64encode(templatefile("${path.module}/scripts/cloudinit_tfe_server.yaml", {
-    tag_prefix               = var.tag_prefix
-    dns_hostname             = var.dns_hostname
-    tfe_username             = var.tfe_username
-    tfe_password             = var.tfe_password
-    postgres_user            = var.postgres_user
-    postgres_fqdn            = azurerm_postgresql_flexible_server.example.fqdn
-    redis_host               = azurerm_redis_cache.tfe.hostname
-    redis_port               = azurerm_redis_cache.tfe.port
-    redis_primary_access_key = azurerm_redis_cache.tfe.primary_access_key
-    dns_zonename             = var.dns_zonename
-    postgres_password        = var.postgres_password
-    tfe_release              = var.tfe_release
-    tfe_license              = var.tfe_license
-    certificate_email        = var.certificate_email
-    full_chain               = base64encode("${acme_certificate.certificate.certificate_pem}${acme_certificate.certificate.issuer_pem}")
-    private_key_pem          = base64encode(acme_certificate.certificate.private_key_pem)
-    container_name           = azurerm_storage_container.example.name
-    storage_account          = azurerm_storage_account.example.name
-    storage_account_key      = azurerm_storage_account.example.primary_access_key
+    custom_data = base64encode(templatefile("${path.module}/scripts/cloudinit_tfe_server_${var.tfe_os}.yaml", {
+    tag_prefix    = var.tag_prefix
+    dns_hostname  = var.dns_hostname
+    tfe_username  = var.tfe_username
+    tfe_password  = var.tfe_password
+    postgres_user = var.postgres_user
+    postgres_fqdn = azurerm_postgresql_flexible_server.example.fqdn
+    # redis_host               = azurerm_redis_cache.tfe.hostname
+    # redis_port               = azurerm_redis_cache.tfe.port
+    # redis_primary_access_key = azurerm_redis_cache.tfe.primary_access_key
+
+    redis_host               = azurerm_managed_redis.example.hostname
+    redis_port               = azurerm_managed_redis.example.default_database[0].port
+    redis_primary_access_key = azurerm_managed_redis.example.default_database[0].primary_access_key
+
+    redis_sidekiq_host               = azurerm_managed_redis.sidekiq.hostname
+    redis_sidekiq_port               = azurerm_managed_redis.sidekiq.default_database[0].port
+    redis_sidekiq_primary_access_key = azurerm_managed_redis.sidekiq.default_database[0].primary_access_key
+
+
+    dns_zonename        = var.dns_zonename
+    postgres_password   = var.postgres_password
+    tfe_release         = var.tfe_release
+    tfe_license         = var.tfe_license
+    certificate_email   = var.certificate_email
+    full_chain          = base64encode("${acme_certificate.certificate.certificate_pem}${acme_certificate.certificate.issuer_pem}")
+    private_key_pem     = base64encode(acme_certificate.certificate.private_key_pem)
+    container_name      = azurerm_storage_container.example.name
+    storage_account     = azurerm_storage_account.example.name
+    storage_account_key = azurerm_storage_account.example.primary_access_key
   }))
 
 }
@@ -479,4 +504,37 @@ resource "azurerm_linux_virtual_machine_scale_set" "tfe" {
 data "azurerm_virtual_machine_scale_set" "tfe" {
   name                = azurerm_linux_virtual_machine_scale_set.tfe.name
   resource_group_name = azurerm_resource_group.tfe.name
+}
+
+resource "azurerm_managed_redis" "example" {
+  name                = "example-managed-redis"
+  resource_group_name = azurerm_resource_group.tfe.name
+  location            = azurerm_resource_group.tfe.location
+  sku_name            = "Balanced_B3"
+
+  high_availability_enabled = false
+
+
+  default_database {
+    access_keys_authentication_enabled = true
+    client_protocol                    = "Plaintext"
+    clustering_policy                  = "NoCluster" # added because redis clustering not allowed
+  }
+}
+
+
+resource "azurerm_managed_redis" "sidekiq" {
+  name                = "sidekiq-managed-redis"
+  resource_group_name = azurerm_resource_group.tfe.name
+  location            = azurerm_resource_group.tfe.location
+  sku_name            = "Balanced_B3"
+
+  high_availability_enabled = false
+
+
+  default_database {
+    access_keys_authentication_enabled = true
+    client_protocol                    = "Plaintext"
+    clustering_policy                  = "NoCluster" # added because redis clustering not allowed
+  }
 }

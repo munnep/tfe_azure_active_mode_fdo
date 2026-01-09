@@ -23,6 +23,14 @@ variable "subscription_id" {
   description = "Azure Subscription ID"
 }
 
+variable "tfe_os" {
+  description = "which OS to use ubuntu or redhat"
+
+  validation {
+    condition     = contains(["ubuntu", "redhat"], lower(var.tfe_os))
+    error_message = "tfe_os must be either 'ubuntu' or 'redhat'."
+  }
+}
 
 variable "storage_account" {
   description = "name of the storage account"

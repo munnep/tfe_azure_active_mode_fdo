@@ -2,6 +2,10 @@
 
 This is a repository to have a TFE FDO active-active environment on Azure. This is using a PostgreSQL, Redis and bucket from Azure. 
 
+The choice of operating system will also determine if you are using `docker` or `podman`
+
+- `tfe_os = "ubuntu"`: installs and runs Terraform Enterprise using **Docker** 
+- `tfe_os = "redhat"`: installs and runs Terraform Enterprise using **Podman** 
 
 # Diagram
 
@@ -42,23 +46,24 @@ cd tfe_azure_active_mode_fdo
 The example file `variables.auto.tfvars_example` can be used for reference.
 ```
 # General
-tag_prefix        = "tfe21"                        # TAG prefix for names to easily find your AWS resources
-dns_hostname      = "tfe21"                        # DNS hostname for the TFE
-dns_zonename      = "aws.munnep.com"               # DNS zone name to be used
-tfe_release       = "v202502-1"                    # Version number for the release to install. This must have a value
-tfe_password      = "Password#1"                   # TFE password for the dashboard and encryption of the data
-certificate_email = "patrick.munne@hashicorp.com"  # Your email address used by TLS certificate 
-tfe_license       = "xxxxxxxxxxxxxx"               # license file being used
+tag_prefix            = "tfe21"                        # TAG prefix for names to easily find your AWS resources
+dns_hostname          = "tfe21"                        # DNS hostname for the TFE
+dns_zonename          = "aws.munnep.com"               # DNS zone name to be used
+tfe_release           = "v202502-1"                    # Version number for the release to install. This must have a value
+tfe_password          = "Password#1"                   # TFE password for the dashboard and encryption of the data
+certificate_email     = "patrick.munne@hashicorp.com"  # Your email address used by TLS certificate 
+tfe_license           = "xxxxxxxxxxxxxx"               # license file being used
 # AWS
-region            = "eu-north-1"                   # AWS region creating the DNS records
+region                = "eu-north-1"                   # AWS region creating the DNS records
 # Azure   
-subscription_id      = "7bee60d1-03fa-4b64-"       # subscription id used by Azure provider
-vnet_cidr            = "10.214.0.0/16"             # Network to be used
-postgres_user        = "tfe"                       # PostgreSQL admin user to be created and used by TFE
-postgres_password    = "Password#1"                # PostgreSQL admin password to be used
-storage_account      = "tfe21patrick"              # Name of the storage account to be created unique in the world
-number_tfe_instances = 1                           # Number of TFE instances in the VM Scale Set - First start with 1
-public_key           = "ssh-rsa AAAAB3Nza"         # public key used to connect to the VM instance
+subscription_id       = "7bee60d1-03fa-4b64-"       # subscription id used by Azure provider
+vnet_cidr             = "10.214.0.0/16"             # Network to be used
+postgres_user         = "tfe"                       # PostgreSQL admin user to be created and used by TFE
+postgres_password     = "Password#1"                # PostgreSQL admin password to be used
+storage_account       = "tfe21patrick"              # Name of the storage account to be created unique in the world
+number_tfe_instances  = 1                           # Number of TFE instances in the VM Scale Set - First start with 1
+public_key            = "ssh-rsa AAAAB3Nza"         # public key used to connect to the VM instance
+tfe_os                = "redhat"                               # OS for the TFE server (ubuntu or redhat)
 
 ```
 - Terraform initialize
