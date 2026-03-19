@@ -19,8 +19,12 @@ variable "postgres_password" {
   description = "password postgresql user"
 }
 
-variable "subscription_id" {
+variable "azure_subscription_id" {
   description = "Azure Subscription ID"
+}
+
+variable "azure_images_subscription_id" {
+  description = "Azure Subscription ID where the images are located"
 }
 
 variable "tfe_os" {

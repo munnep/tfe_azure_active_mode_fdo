@@ -56,7 +56,8 @@ tfe_license           = "xxxxxxxxxxxxxx"               # license file being used
 # AWS
 region                = "eu-north-1"                   # AWS region creating the DNS records
 # Azure   
-subscription_id       = "7bee60d1-03fa-4b64-"       # subscription id used by Azure provider
+azure_subscription_id       = "xxxxx-xxxxxx-xxxxx-xxxxxx"       # subscription id used by Azure provider
+azure_images_subscription_id = "xxxxx-xxxxxx-xxxxx-xxxxxx"   # Azure subscription ID where the images are located
 vnet_cidr             = "10.214.0.0/16"             # Network to be used
 postgres_user         = "tfe"                       # PostgreSQL admin user to be created and used by TFE
 postgres_password     = "Password#1"                # PostgreSQL admin password to be used
